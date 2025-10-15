@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elevator-py"
+dynamic = ["version"]
+description = "Python implementation of Elevator Saga game with event system"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    {name = "ZGCA-Forge Team", email = "zgca@zgca.com"}
+]
+keywords = ["elevator", "simulation", "game", "event-driven", "optimization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Simulation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "numpy>=1.20.0",
+    "flask>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+    "pre-commit>=2.20.0",
+    "bump2version>=1.0.0",
+]
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "myst-parser>=0.18.0",
+]
+all = [
+    "elevatorpy[dev,docs]",
+]
+
+[project.scripts]
+elevator-saga = "elevator_saga.cli.main:main"
+elevator-server = "elevator_saga.cli.main:server_main"
+elevator-client = "elevator_saga.cli.main:client_main"
+elevator-grader = "elevator_saga.grader.grader:main"
+elevator-batch-test = "elevator_saga.grader.batch_runner:main"
+
+[project.urls]
+Homepage = "https://github.com/ZGCA-Forge/Elevator"
+Documentation = "https://zgca-forge.github.io/Elevator/"
+Repository = "https://github.com/ZGCA-Forge/Elevator"
+Issues = "https://github.com/ZGCA-Forge/Elevator/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["elevator_saga*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "elevator_saga.__version__"}
+
+[tool.black]
+line-length = 120
+target-version = ['py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "numpy.*",
+    "flask.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short --strict-markers --strict-config -ra --color=yes"
+
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "test_*.py", "*_test.py", ".venv", "venv", "build", "dist"]
+# B101: assert语句用于类型检查和开发时验证，不是安全问题
+# B601: shell命令参数化，在受控环境中使用
+# B310: urllib.urlopen用于连接受控的API服务器，URL来源可信
+# B311: random模块用于生成电梯流量模拟数据，非加密用途
+skips = ["B101", "B601", "B310", "B311"]
