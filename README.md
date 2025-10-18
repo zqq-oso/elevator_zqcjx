@@ -1,75 +1,206 @@
-<<<<<<< HEAD
-# Elevator Saga
+# 电梯调度算法可视化界面 README
 
-<div align="center">
+## 一、项目概述
+本项目是电梯调度算法的配套可视化工具，旨在通过直观的界面实时展示算法运行过程中的电梯状态、楼层请求、乘客等待情况及性能统计数据。界面支持自动连接模拟器，无需手动操作即可同步算法运行结果，帮助开发者快速观察调度效率、定位优化方向。
 
-[![PyPI version](https://badge.fury.io/py/elevator-py.svg)](https://badge.fury.io/py/elevator-py)
-[![Python versions](https://img.shields.io/pypi/pyversions/elevator-py.svg)](https://pypi.org/project/elevator-py/)
-[![Build Status](https://github.com/ZGCA-Forge/Elevator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZGCA-Forge/Elevator/actions)
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://zgca-forge.github.io/Elevator/)
 
-[![GitHub stars](https://img.shields.io/github/stars/ZGCA-Forge/Elevator.svg?style=social&label=Star)](https://github.com/ZGCA-Forge/Elevator)
-[![GitHub forks](https://img.shields.io/github/forks/ZGCA-Forge/Elevator.svg?style=social&label=Fork)](https://github.com/ZGCA-Forge/Elevator/fork)
-[![GitHub issues](https://img.shields.io/github/issues/ZGCA-Forge/Elevator.svg)](https://github.com/ZGCA-Forge/Elevator/issues)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/ZGCA-Forge/Elevator/blob/main/LICENSE)
+## 二、核心功能
+| 功能模块          | 具体说明                                                                 |
+|-------------------|--------------------------------------------------------------------------|
+| 实时状态可视化    | 1. 电梯运行状态：位置、方向（↑/↓/—）、启停状态（运行/停止）<br>2. 楼层请求：每层上下行等待人数（蓝色高亮标识有请求楼层）<br>3. 乘客信息：电梯内乘客数量及容量占用（格式：`当前人数/最大容量`，如“2/8”） |
+| 性能统计分析      | 1. 基础数据：总乘客数、已完成行程数<br>2. 时间指标：平均等待时间、95%乘客等待时间、平均行程时间<br>3. 效率指标：电梯利用率（运行中电梯数量占总电梯数的百分比）<br>4. 趋势图表：实时绘制等待时间变化曲线，支持查看历史趋势 |
+| 自动数据同步      | 1. 页面加载后自动发起模拟器连接，无需手动触发<br>2. 固定 300ms 间隔刷新数据，确保与算法运行实时同步<br>3. 连接中断后自动重试，减少人工干预成本 |
 
-</div>
 
----
+## 三、环境要求
+1. **浏览器**：Chrome、Firefox、Edge 等现代浏览器（推荐 Chrome 100+ 版本，确保兼容性）
+2. **模拟器**：
+   - 运行地址：默认配置为 `http://127.0.0.1:8001`（可根据实际部署地址修改）
+   - 核心接口：需提供 `/api/state` 接口，返回电梯状态、楼层请求、性能统计等 JSON 格式数据
+3. **依赖资源**：无需本地安装依赖，界面通过 CDN 自动加载以下资源：
+   - Tailwind CSS（样式框架）
+   - Font Awesome（图标库）
+   - Chart.js（数据可视化图表库）
 
-Elevator Saga is a Python implementation of an elevator [simulation game](https://play.elevatorsaga.com/) with a event-driven architecture Design and optimize elevator control algorithms to efficiently transport passengers in buildings.
 
-### Features
+## 四、使用步骤
+1. **启动模拟器**  
+   确保电梯调度算法模拟器已正常启动，且访问 `http://127.0.0.1:8001/api/state` 可返回合法 JSON 数据（参考「六、接口数据格式」）。
 
-- 🏢 **Realistic Simulation**: Physics-based elevator movement with acceleration, deceleration, and realistic timing
+2. **打开可视化界面**  
+   将 `elevator-visualization.html` 文件直接用浏览器打开，页面会自动触发模拟器连接逻辑。
 
-## Installation
+3. **查看运行结果**  
+   - 连接状态：左侧「连接状态」区域显示“已连接”（绿色标识），表示数据同步正常；显示“未连接”（灰色标识）时，需检查模拟器是否正常运行。
+   - 电梯状态：中间「电梯运行可视化」区域展示 2 部电梯的实时位置，楼层指示器从 F0（底层）到 F5（顶层），与真实楼层布局一致。
+   - 等待人数：「楼层请求状态」区域用数字标注每层上下行等待人数（如“↑ 3”表示该楼层有 3 人等待上行）。
+   - 性能数据：下方「算法性能统计」区域实时更新统计指标，图表动态展示平均等待时间、95% 等待时间的变化趋势。
 
-### Basic Installation
 
-```bash
-pip install elevator-py
+## 五、界面结构说明
+| 区域                | 位置          | 功能描述                                                                 |
+|---------------------|---------------|--------------------------------------------------------------------------|
+| 顶部标题栏          | 页面顶部      | 显示项目名称“电梯调度算法可视化”及算法版本说明（如“SAGA智能优化版”）       |
+| 左侧状态面板        | 页面左侧（占1/4宽度） | 1. 场景信息：电梯数量、楼层数量、电梯容量<br>2. 算法状态：当前步骤、处理进度<br>3. 连接控制：连接/断开模拟器按钮及状态标识 |
+| 电梯运行可视化区域  | 页面右侧上半部分 | 1. 楼层指示器：F0~F5 楼层标识，按“F0（底）→ F5（顶）”顺序排列<br>2. 电梯轿厢：2 部电梯的实时位置、运行方向、乘客数量显示 |
+| 楼层请求状态区域    | 页面右侧中半部分 | 每层楼的上下行请求按钮，蓝色背景表示有等待乘客，按钮旁标注等待人数         |
+| 算法性能统计区域    | 页面右侧下半部分 | 1. 统计数据面板：总乘客数、已完成行程数、平均等待时间等指标<br>2. 趋势图表：展示等待时间随步骤的变化曲线 |
+| 运行日志区域        | 页面最底部    | 实时记录关键事件（如“步骤 100：电梯状态更新”“数据同步成功”），支持滚动查看历史日志 |
+
+
+## 六、接口数据格式
+界面依赖模拟器 `/api/state` 接口返回以下格式的 JSON 数据（示例）：
+```json
+{
+  "tick": 100,                  // 当前算法运行步骤
+  "elevators": [                // 电梯状态数组（支持多电梯，默认2部）
+    {
+      "id": 0,                  // 电梯ID（0开始递增）
+      "position": {
+        "current_floor": 2,     // 当前楼层（模拟器0=顶层，5=底层，界面自动反转映射）
+        "target_floor": 4,      // 目标楼层
+        "floor_up_position": 0  // 辅助定位参数（无需修改）
+      },
+      "passengers": [],         // 电梯内乘客列表（空数组表示无乘客）
+      "max_capacity": 8,        // 电梯最大容量
+      "speed_pre_tick": 0.5,    // 每步骤移动速度（无需修改）
+      "run_status": "running",  // 运行状态（running=运行中，stopped=停止）
+      "last_tick_direction": "up",  // 运行方向（up=上行，down=下行，stopped=停止）
+      "indicators": {
+        "up": false,
+        "down": false
+      },
+      "passenger_destinations": {},  // 乘客目的地映射（无需修改）
+      "energy_consumed": 0.0,    // 能耗数据（无需修改）
+      "last_update_tick": 100    // 最后更新步骤（无需修改）
+    },
+    {
+      "id": 1,                  // 第2部电梯ID
+      "position": {
+        "current_floor": 5,     // 当前楼层（底层）
+        "target_floor": 1,      // 目标楼层
+        "floor_up_position": 0
+      },
+      "passengers": [101, 102], // 电梯内乘客ID列表（当前2人）
+      "max_capacity": 8,
+      "speed_pre_tick": 0.5,
+      "run_status": "running",
+      "last_tick_direction": "down",
+      "indicators": {
+        "up": false,
+        "down": false
+      },
+      "passenger_destinations": {
+        "1": [101, 102]
+      },
+      "energy_consumed": 0.0,
+      "last_update_tick": 100
+    }
+  ],
+  "floors": [                   // 楼层请求数组（F0~F5）
+    {
+      "floor": 0,               // 楼层号（顶层）
+      "up_queue": [],           // 上行等待乘客列表（空=无等待）
+      "down_queue": [201]       // 下行等待乘客列表（当前1人等待）
+    },
+    {
+      "floor": 1,
+      "up_queue": [202, 203],   // 上行等待2人
+      "down_queue": []
+    },
+    {
+      "floor": 2,
+      "up_queue": [],
+      "down_queue": []
+    },
+    {
+      "floor": 3,
+      "up_queue": [],
+      "down_queue": [204]       // 下行等待1人
+    },
+    {
+      "floor": 4,
+      "up_queue": [],
+      "down_queue": []
+    },
+    {
+      "floor": 5,               // 楼层号（底层）
+      "up_queue": [],
+      "down_queue": []
+    }
+  ],
+  "passengers": {},             // 乘客详细信息（无需修改）
+  "metrics": {                  // 性能统计数据
+    "completed_passengers": 50, // 已完成行程的乘客数
+    "total_passengers": 120,    // 总乘客数
+    "average_floor_wait_time": 8.5,  // 平均等待时间（秒）
+    "p95_floor_wait_time": 15.2,     // 95%乘客等待时间（秒）
+    "average_arrival_wait_time": 12.3, // 平均到达等待时间（秒）
+    "p95_arrival_wait_time": 20.1     // 95%到达等待时间（秒）
+  }
+}
 ```
 
-## Quick Start
 
-### Running the Game
+## 七、常见问题排查
+1. **界面空白/无数据显示**
+   - 检查模拟器是否正常运行，访问 `http://127.0.0.1:8001/api/state` 确认是否返回 JSON 数据。
+   - 打开浏览器开发者工具（F12）→「网络」面板，筛选 `state` 请求，查看是否返回 200 状态码；若返回 404/500，需检查模拟器接口路径是否正确。
+   - 查看「控制台」面板，若有 `data is not defined` 等错误，需确认接口返回数据格式是否符合「六、接口数据格式」要求。
 
-```bash
-# Start the backend simulator (Terminal #1)
-python -m elevator_saga.server.simulator
-```
+2. **电梯位置异常（飞出去/楼层反转）**
+   - 确认模拟器返回的 `current_floor` 范围是否为 0~5（默认适配 6 层场景），若楼层数不同，需修改代码中 `numFloors` 变量（默认 6）。
+   - 若电梯初始在“天上”（超出楼层指示器范围），需检查 `updateElevatorVisualization` 函数中 `totalHeight` 计算是否正确（应为 `numFloors * 60`）。
 
-```bash
-# Start your own client (Terminal #2)
-# Example:
-python -m elevator_saga.client_examples.bus_example
-```
+3. **楼层等待人数不显示**
+   - 检查模拟器返回的 `floors` 数组中是否包含 `up_queue` 和 `down_queue` 字段，且字段值为数组（空数组表示无等待）。
+   - 确认 `updateFloorButtons` 函数中是否正确引用 `rawData.floors`（需先在 `processSimulationData` 函数中保存 `rawData = data`）。
 
-## Documentation
+4. **图表无数据/不更新**
+   - 检查 `metrics` 字段是否包含 `average_floor_wait_time` 和 `p95_floor_wait_time` 数据。
+   - 确认 `updateStatistics` 函数中是否正确计算 `avgWait` 和 `p95Wait`，且图表数据更新逻辑是否触发（默认每 10 步更新一次）。
 
-For detailed documentation, please visit: [https://zgca-forge.github.io/Elevator/](https://zgca-forge.github.io/Elevator/)
 
-## Contributing
+## 八、自定义配置
+1. **修改模拟器地址**  
+   打开 `elevator-visualization.html` 文件，找到以下代码，将 `SIMULATOR_URL` 改为实际模拟器地址：
+   ```javascript
+   // 核心配置
+   const SIMULATOR_URL = 'http://127.0.0.1:8002';  // 示例：修改为 8002 端口
+   const API_ENDPOINTS = {
+       state: '/api/state',               // 若接口路径变化，也需同步修改
+   };
+   ```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+2. **调整数据刷新间隔**  
+   找到 `connectToSimulator` 函数中的 `setInterval` 代码，修改间隔时间（单位：毫秒）：
+   ```javascript
+   // 定时获取状态数据（默认 300ms 一次，可改为 500ms 降低频率）
+   updateInterval = setInterval(() => {
+       // ... 数据请求逻辑 ...
+   }, 500);
+   ```
 
-## Star History
+3. **修改电梯/楼层样式**  
+   在 `<style type="text/tailwindcss">` 标签内，调整以下类的样式（示例：修改电梯轿厢颜色）：
+   ```css
+   @layer utilities {
+       .elevator-car {
+           height: 60px;
+           transition: transform 0.5s ease-in-out;
+           background-color: #f0f9ff;  // 示例：改为浅蓝色背景
+       }
+       // ... 其他样式 ...
+   }
+   ```
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ZGCA-Forge/Elevator&type=Date)](https://star-history.com/#ZGCA-Forge/Elevator&Date)
 
-## License
-
-This project is licensed under MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-<div align="center">
-
-Made with ❤️ by the ZGCA-Forge Team
-
-</div>
-=======
-# elevator
-一个作业
->>>>>>> 186331f8a41ba44136324b23453d86e4238998c0
+## 九、版本信息
+- **版本**：v1.0
+- **更新时间**：2025-10
+- **核心优化点**：
+  1. 修复电梯位置反转问题（适配模拟器“0=顶层”的楼层编号规则）
+  2. 新增楼层等待人数实时显示功能
+  3. 优化连接断连自动重试逻辑，提升稳定性
+  4. 调整图表数据采样频率（每 10 步更新一次），避免数据密集导致卡顿
+  5. 增加界面空值校验，避免因数据缺失导致的空白问题

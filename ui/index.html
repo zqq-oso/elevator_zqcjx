@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电梯调度算法可视化</title>
+    <!-- 外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .elevator-shaft {
+                height: calc(60px * var(--num-floors));
+                max-height: calc(60px * 20);
+            }
+            .elevator-car {
+                height: 60px;
+                transition: transform 0.5s ease-in-out;
+            }
+            .elevator-door {
+                width: 50%;
+                height: 100%;
+                background-color: #9CA3AF;
+                transition: width 0.5s ease-in-out;
+            }
+            .floor-indicator {
+                height: 60px;
+            }
+            .passenger-icon {
+                width: 16px;
+                height: 16px;
+                background-color: #F59E0B;
+                border-radius: 50%;
+                position: absolute;
+            }
+            .passenger-count {
+                position: absolute;
+                bottom: 2px;
+                right: 2px;
+                background-color: rgba(0,0,0,0.7);
+                color: white;
+                font-size: 10px;
+                padding: 0 2px;
+                border-radius: 2px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-gray-800">电梯调度算法可视化</h1>
+            <p class="text-center text-gray-600 mt-2">实时显示算法运行结果</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- 左侧状态面板 -->
+            <div class="lg:col-span-1 bg-white rounded-lg shadow-md p-4">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">运行状态</h2>
+                
+                <!-- 场景信息展示 -->
+                <div class="mb-6 bg-gray-50 p-3 rounded">
+                    <h3 class="text-lg font-medium mb-2 text-gray-700">场景信息</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">电梯数量：</span>
+                            <span id="scene-elevators" class="font-medium">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">楼层数量：</span>
+                            <span id="scene-floors" class="font-medium">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">电梯容量：</span>
+                            <span id="elevator-capacity" class="font-medium">-- 人/部</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 算法状态 -->
+                <div class="mb-6 bg-gray-50 p-3 rounded">
+                    <h3 class="text-lg font-medium mb-2 text-gray-700">算法状态</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">当前步骤：</span>
+                            <span id="current-step" class="font-medium">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">处理进度：</span>
+                            <span id="processing-progress" class="font-medium">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 连接状态 -->
+                <div>
+                    <h3 class="text-lg font-medium mb-2 text-gray-700">连接状态</h3>
+                    <div class="flex items-center">
+                        <div id="connection-status" class="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
+                        <span id="connection-text" class="text-gray-600">未连接</span>
+                    </div>
+                    <button id="btn-connect" class="mt-2 bg-primary hover:bg-blue-600 text-white py-1 px-3 rounded text-sm transition-colors">
+                        <i class="fa fa-connectdevelop mr-1"></i> 连接到模拟器
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 右侧可视化区域 -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- 电梯可视化区域 -->
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">电梯运行可视化</h2>
+                    <div id="elevator-visualization" class="flex justify-center items-end space-x-8 relative">
+                        <div class="text-gray-500 italic">请连接到模拟器查看算法结果</div>
+                    </div>
+                </div>
+                
+                <!-- 楼层请求状态 -->
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">楼层请求状态</h2>
+                    <div id="floor-buttons" class="flex justify-center space-x-4 flex-wrap">
+                        <div class="text-gray-500 italic">等待数据...</div>
+                    </div>
+                </div>
+                
+                <!-- 统计数据和图表 -->
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">算法性能统计</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">总乘客数:</span>
+                                <span id="total-passengers" class="font-semibold text-gray-800">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">已完成行程:</span>
+                                <span id="completed-trips" class="font-semibold text-gray-800">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">平均等待时间:</span>
+                                <span id="avg-wait-time" class="font-semibold text-gray-800">0s</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">95%乘客等待时间:</span>
+                                <span id="percentile-95-wait" class="font-semibold text-primary">0s</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">平均行程时间:</span>
+                                <span id="avg-trip-time" class="font-semibold text-gray-800">0s</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-700">电梯利用率:</span>
+                                <span id="elevator-utilization" class="font-semibold text-gray-800">0%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <canvas id="performance-chart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 事件日志 -->
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">运行日志</h2>
+                    <div id="event-log" class="h-40 overflow-y-auto bg-gray-50 p-3 rounded text-sm">
+                        <p class="text-gray-500 italic">等待连接...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 核心配置
+        const SIMULATOR_URL = 'http://127.0.0.1:8001';  // 模拟器地址
+        const API_ENDPOINTS = {
+            state: '/api/state',               // 获取实时状态（包含场景和算法结果）
+        };
+
+        // 全局变量
+        let numElevators = 0;
+        let numFloors = 0;
+        let elevatorCapacity = 8;
+        let isConnected = false;
+        let performanceChart = null;
+        let elevatorStates = [];
+        let floorRequests = { up: [], down: [] };
+        let totalPassengers = 0;
+        let completedTrips = 0;
+        let totalWaitTime = 0;
+        let totalTripTime = 0;
+        let waitTimeHistory = [];
+        let currentStep = 0;
+        let maxSteps = 1;  // 用于计算进度
+        let updateInterval = null;
+
+        // 页面加载完成后自动尝试连接
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            bindEventListeners();
+            // 自动尝试连接
+            setTimeout(connectToSimulator, 1000);
+        });
+
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '平均等待时间 (s)',
+                            data: [],
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: '95%等待时间 (s)',
+                            data: [],
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: '步骤' } },
+                        y: { beginAtZero: true, title: { display: true, text: '时间 (s)' } }
+                    }
+                }
+            });
+        }
+
+        // 绑定事件监听器
+        function bindEventListeners() {
+            document.getElementById('btn-connect').addEventListener('click', toggleConnection);
+        }
+
+        // 切换连接状态
+        function toggleConnection() {
+            if (isConnected) {
+                disconnectFromSimulator();
+            } else {
+                connectToSimulator();
+            }
+        }
+
+        // 连接到模拟器
+        function connectToSimulator() {
+            logEvent('正在连接到模拟器...');
+            
+            // 连接成功后开始定时获取数据
+            if (updateInterval) clearInterval(updateInterval);
+            
+            // 定时获取状态数据（每300ms一次）
+            updateInterval = setInterval(() => {
+                fetch(`${SIMULATOR_URL}${API_ENDPOINTS.state}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (isConnected) {
+                                logEvent(`连接中断: HTTP ${response.status}`);
+                                updateConnectionStatus(false);
+                            }
+                            throw new Error(`状态码: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 首次连接成功
+                        if (!isConnected) {
+                            isConnected = true;
+                            updateConnectionStatus(true);
+                            logEvent('成功连接到模拟器，开始接收数据');
+                        }
+                        
+                        // 处理接收到的数据
+                        processSimulationData(data);
+                    })
+                    .catch(error => {
+                        if (isConnected) {
+                            logEvent(`数据获取失败: ${error.message}`);
+                        }
+                    });
+            }, 300);
+        }
+
+        // 断开连接
+        function disconnectFromSimulator() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            
+            isConnected = false;
+            updateConnectionStatus(false);
+            logEvent('已断开连接');
+            
+            // 重置显示
+            document.getElementById('elevator-visualization').innerHTML = 
+                '<div class="text-gray-500 italic">请连接到模拟器查看算法结果</div>';
+            document.getElementById('floor-buttons').innerHTML = '<div class="text-gray-500 italic">等待数据...</div>';
+        }
+
+        // 处理模拟数据
+
+// 1. 全局变量中新增p95WaitTime，用于存储95%等待时间
+let p95WaitTime = 0;
+// 2. 在processSimulationData函数中更新p95WaitTime
+function processSimulationData(data) {
+    rawData = data;
+    console.log("收到算法运行数据:", data);
+    
+    // 1. 解析场景配置（从数据中提取）
+    // 楼层数量 = floors数组的长度
+    numFloors = data.floors?.length ?? numFloors;
+    // 电梯数量 = elevators数组的长度
+    numElevators = data.elevators?.length ?? numElevators;
+    // 电梯容量 = 第一个电梯的max_capacity（默认8）
+    elevatorCapacity = data.elevators?.[0]?.max_capacity ?? 8;
+    // 总步骤数（用于计算进度）
+    maxSteps = data.max_tick ?? data.tick ?? maxSteps;  // 适配tick字段
+    
+    // 更新场景信息显示
+    document.getElementById('scene-elevators').textContent = numElevators;
+    document.getElementById('scene-floors').textContent = numFloors;
+    document.getElementById('elevator-capacity').textContent = `${elevatorCapacity} 人/部`;
+    
+    // 2. 解析电梯状态（重点修正）
+    if (data.elevators) {
+        elevatorStates = data.elevators.map(elevator => ({
+            id: elevator.id ?? 0,
+            // 电梯当前楼层在position.current_floor中
+            currentFloor: elevator.position?.current_floor ?? 0,
+            // 方向从last_tick_direction提取（stopped/up/down）
+            direction: elevator.last_tick_direction?.toUpperCase() ?? 'STOP',
+            // 运行状态从run_status提取（stopped/running等）
+            state: elevator.run_status?.toUpperCase() ?? 'STOPPED',
+            passengers: elevator.passengers ?? []
+        }));
+    }
+    
+    // 3. 解析楼层请求（从floors数组提取上下行队列）
+    floorRequests = { up: [], down: [] };
+    if (data.floors) {
+        data.floors.forEach(floor => {
+            // 有上行队列的楼层标记为上行请求
+            if (floor.up_queue?.length > 0) {
+                floorRequests.up.push(floor.floor);
+            }
+            // 有下行队列的楼层标记为下行请求
+            if (floor.down_queue?.length > 0) {
+                floorRequests.down.push(floor.floor);
+            }
+        });
+    }
+    
+    // 4. 解析统计数据时，同步更新p95WaitTime
+    const metrics = data.metrics ?? {};
+    totalPassengers = metrics.total_passengers ?? 0;
+    completedTrips = metrics.completed_passengers ?? 0;
+    totalWaitTime = metrics.average_floor_wait_time ? metrics.average_floor_wait_time * completedTrips : 0;
+    totalTripTime = metrics.average_arrival_wait_time ? metrics.average_arrival_wait_time * completedTrips : 0;
+    waitTimeHistory = [];
+    p95WaitTime = metrics.p95_floor_wait_time ?? 0; // 保存到全局变量
+    
+    // 5. 解析步骤信息（当前步骤为tick）
+    currentStep = data.tick ?? currentStep;
+    document.getElementById('current-step').textContent = currentStep;
+    const progress = maxSteps > 0 ? Math.min(Math.round((currentStep / maxSteps) * 100), 100) : 0;
+    document.getElementById('processing-progress').textContent = `${progress}%`;
+    
+    // 6. 处理事件日志（自动生成关键事件）
+    if (currentStep % 10 === 0) {  // 每10步记录一次状态
+        logEvent(`步骤 ${currentStep}：电梯状态更新（${elevatorStates.length}部电梯）`);
+    }
+    
+    // 更新所有可视化组件
+    updateElevatorVisualization();
+    updateFloorButtons();
+    updateStatistics();
+}
+
+function updateElevatorVisualization() {
+    const container = document.getElementById('elevator-visualization');
+    container.innerHTML = '';
+    
+    if (numFloors === 0 || numElevators === 0) {
+        container.innerHTML = '<div class="text-gray-500 italic">等待场景数据...</div>';
+        return;
+    }
+    
+    // 1. 计算总高度（确保井道能容纳所有楼层）
+    const floorHeight = 60;
+    const totalHeight = numFloors * floorHeight;
+    container.style.height = `${totalHeight}px`; // 固定容器高度
+    
+    // 2. 楼层指示器（F0在底部，F5在顶部）
+    const floorIndicators = document.createElement('div');
+    floorIndicators.className = 'flex flex-col justify-between mr-4';
+    floorIndicators.style.height = `${totalHeight}px`;
+    
+    for (let i = 0; i < numFloors; i++) {
+        const floorIndicator = document.createElement('div');
+        floorIndicator.className = `floor-indicator flex items-center justify-center font-semibold h-[${floorHeight}px] ${
+            floorRequests.up?.includes(i) || floorRequests.down?.includes(i) ? 'text-primary' : 'text-gray-700'
+        }`;
+        floorIndicator.textContent = `F${i}`;
+        floorIndicators.appendChild(floorIndicator);
+    }
+    container.appendChild(floorIndicators);
+    
+    // 3. 电梯渲染
+    elevatorStates.forEach(elevator => {
+        const shaft = document.createElement('div');
+        shaft.className = 'elevator-shaft relative border border-gray-300 w-28 bg-gray-100';
+        shaft.style.height = `${totalHeight}px`; // 井道高度与总高度一致
+        shaft.style.overflow = 'hidden'; // 隐藏超出井道的部分
+        
+        const car = document.createElement('div');
+        car.className = 'elevator-car absolute w-full bg-white border border-gray-300 flex overflow-hidden relative';
+        car.style.height = `${floorHeight}px`; // 轿厢高度固定为一层
+        
+        // 4. 关键：反转楼层映射（解决“一楼是顶楼”的问题）
+        // 模拟器currentFloor=0 → 视觉顶楼（F5），currentFloor=5 → 视觉一楼（F0）
+        const visualFloor = numFloors - 1 - elevator.currentFloor;
+        // 计算轿厢顶部位置（确保在井道内）
+        const topPosition = visualFloor * floorHeight;
+        car.style.top = `${topPosition}px`;
+        
+        // 电梯门、乘客等其他元素（保持不变）
+        const leftDoor = document.createElement('div');
+        leftDoor.className = 'elevator-door left-door';
+        const rightDoor = document.createElement('div');
+        rightDoor.className = 'elevator-door right-door ml-auto';
+        
+        if (elevator.state === 'RUNNING' || elevator.direction !== 'STOPPED') {
+            leftDoor.style.width = '50%';
+            rightDoor.style.width = '50%';
+        } else {
+            leftDoor.style.width = '0%';
+            rightDoor.style.width = '0%';
+        }
+        
+        const passengerArea = document.createElement('div');
+        passengerArea.className = 'absolute inset-0 flex items-center justify-center pointer-events-none p-2';
+        
+        const passengerCount = elevator.passengers ? elevator.passengers.length : 0;
+        const displayCount = Math.min(passengerCount, elevatorCapacity);
+        
+        for (let i = 0; i < displayCount; i++) {
+            const passenger = document.createElement('div');
+            passenger.className = 'passenger-icon';
+            const col = i % 3;
+            const row = Math.floor(i / 3);
+            passenger.style.left = `${15 + col * 25}%`;
+            passenger.style.top = `${15 + row * 30}%`;
+            passengerArea.appendChild(passenger);
+        }
+        
+        const countLabel = document.createElement('div');
+        countLabel.className = 'passenger-count';
+        countLabel.textContent = `${passengerCount}/${elevatorCapacity}`;
+        
+        const elevatorId = document.createElement('div');
+        elevatorId.className = 'absolute top-1 left-1 bg-primary text-white text-xs px-1 rounded z-10';
+        elevatorId.textContent = `E${elevator.id + 1}`;
+        
+        const direction = document.createElement('div');
+        direction.className = 'absolute top-1 right-1 bg-dark text-white text-xs px-1 rounded z-10';
+        direction.textContent = elevator.direction === 'UP' ? '↓' : elevator.direction === 'DOWN' ? '↑' : '—';
+        // 注意：方向反转（模拟器UP对应视觉DOWN，因为楼层映射反了）
+        
+        car.appendChild(leftDoor);
+        car.appendChild(rightDoor);
+        car.appendChild(passengerArea);
+        car.appendChild(countLabel);
+        car.appendChild(elevatorId);
+        car.appendChild(direction);
+        
+        shaft.appendChild(car);
+        container.appendChild(shaft);
+    });
+}
+
+// 修正95%等待时间计算（适配metrics中的p95字段）
+function calculatePercentile95() {
+    return p95WaitTime;
+}
+
+function updateFloorButtons() {
+    const container = document.getElementById('floor-buttons');
+    container.innerHTML = '';
+    
+    if (numFloors === 0 || !rawData || !rawData.floors) {
+        container.innerHTML = '<div class="text-gray-500 italic">等待场景数据...</div>';
+        return;
+    }
+    
+    for (let i = 0; i < numFloors; i++) {
+        const floorData = rawData.floors.find(f => f.floor === i) || { up_queue: [], down_queue: [] };
+        const upCount = floorData.up_queue.length || 0;
+        const downCount = floorData.down_queue.length || 0;
+        
+        const floorBtnGroup = document.createElement('div');
+        floorBtnGroup.className = 'flex flex-col items-center m-1 w-12';
+        
+        const floorLabel = document.createElement('div');
+        floorLabel.className = `font-semibold mb-1 w-full text-center`;
+        floorLabel.textContent = `F${i}`;
+        
+        const upBtn = document.createElement('div');
+        upBtn.className = `w-full h-8 rounded mb-1 flex items-center justify-center ${
+            upCount > 0 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+        }`;
+        upBtn.innerHTML = `
+            <i class="fa fa-arrow-up mr-1"></i>
+            ${upCount > 0 ? `<span class="text-xs bg-white text-primary rounded-full w-4 h-4 flex items-center justify-center">${upCount}</span>` : ''}
+        `;
+        
+        const downBtn = document.createElement('div');
+        downBtn.className = `w-full h-8 rounded flex items-center justify-center ${
+            downCount > 0 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+        }`;
+        downBtn.innerHTML = `
+            <i class="fa fa-arrow-down mr-1"></i>
+            ${downCount > 0 ? `<span class="text-xs bg-white text-primary rounded-full w-4 h-4 flex items-center justify-center">${downCount}</span>` : ''}
+        `;
+        
+        floorBtnGroup.appendChild(floorLabel);
+        floorBtnGroup.appendChild(upBtn);
+        floorBtnGroup.appendChild(downBtn);
+        container.appendChild(floorBtnGroup);
+    }
+}
+
+// 补充：在processSimulationData中保存原始数据，供updateFloorButtons使用
+let rawData = null; // 新增全局变量保存原始数据
+
+        // 更新统计数据
+        function updateStatistics() {
+            document.getElementById('total-passengers').textContent = totalPassengers;
+            document.getElementById('completed-trips').textContent = completedTrips;
+            
+            const avgWait = completedTrips > 0 ? (totalWaitTime / completedTrips) : 0;
+            const avgTrip = completedTrips > 0 ? (totalTripTime / completedTrips) : 0;
+            const p95Wait = calculatePercentile95(); // 直接使用全局变量中的值
+            
+            document.getElementById('avg-wait-time').textContent = `${avgWait.toFixed(1)}s`;
+            document.getElementById('percentile-95-wait').textContent = `${p95Wait.toFixed(1)}s`;
+            document.getElementById('avg-trip-time').textContent = `${avgTrip.toFixed(1)}s`;
+                    
+            // 更新图表
+            if (performanceChart && currentStep > 0) {
+                // 每10步添加一个数据点，避免图表过于密集
+                if (currentStep % 10 === 0 || performanceChart.data.labels.length === 0) {
+                    performanceChart.data.labels.push(currentStep);
+                    performanceChart.data.datasets[0].data.push(avgWait);
+                    performanceChart.data.datasets[1].data.push(p95Wait);
+                    
+                    // 保持最新的20个数据点
+                    if (performanceChart.data.labels.length > 20) {
+                        performanceChart.data.labels.shift();
+                        performanceChart.data.datasets.forEach(ds => ds.data.shift());
+                    }
+                    performanceChart.update();
+                }
+            }
+        }
+
+
+        // 计算电梯利用率
+        function calculateElevatorUtilization() {
+            if (numElevators === 0) return 0;
+            const running = elevatorStates.filter(e => e.state === 'RUNNING' || e.direction !== 'STOP').length;
+            return (running / numElevators) * 100;
+        }
+
+        // 更新连接状态显示
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connection-status');
+            const text = document.getElementById('connection-text');
+            const btn = document.getElementById('btn-connect');
+            
+            if (connected) {
+                indicator.className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                text.textContent = '已连接';
+                text.className = 'text-green-600';
+                btn.innerHTML = '<i class="fa fa-disconnect mr-1"></i> 断开连接';
+            } else {
+                indicator.className = 'w-3 h-3 rounded-full bg-gray-400 mr-2';
+                text.textContent = '未连接';
+                text.className = 'text-gray-600';
+                btn.innerHTML = '<i class="fa fa-connectdevelop mr-1"></i> 连接到模拟器';
+            }
+        }
+
+        // 记录日志
+        function logEvent(message) {
+            const logContainer = document.getElementById('event-log');
+            
+            if (logContainer.querySelector('.text-gray-500.italic')) {
+                logContainer.innerHTML = '';
+            }
+            
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${
+                now.getMinutes().toString().padStart(2, '0')}:${
+                now.getSeconds().toString().padStart(2, '0')
+            }`;
+            
+            const entry = document.createElement('p');
+            entry.className = 'mb-1';
+            entry.innerHTML = `<span class="text-gray-500">[${timeStr}]</span> ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
